@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 
 
-
-
 def interpolated_prec_rec(prec, rec):
     """Interpolated AP - VOCdevkit from VOC 2011.
     """
@@ -15,6 +13,7 @@ def interpolated_prec_rec(prec, rec):
     idx = np.where(mrec[1::] != mrec[0:-1])[0] + 1
     ap = np.sum((mrec[idx] - mrec[idx - 1]) * mprec[idx])
     return ap
+
 
 def segment_iou(target_segment, candidate_segments):
     """Compute the temporal intersection over union between a
@@ -43,6 +42,7 @@ def segment_iou(target_segment, candidate_segments):
     # over union of two segments.
     tIoU = segments_intersection.astype(float) / segments_union
     return tIoU
+
 
 def wrapper_segment_iou(target_segments, candidate_segments):
     """Compute intersection over union btw segments
@@ -97,7 +97,8 @@ class ANETproposal(object):
         self.check_status = check_status
         # Retrieve blocked videos from server.
         if self.check_status:
-            self.blocked_videos = get_blocked_videos()
+            #self.blocked_videos = get_blocked_videos()
+            pass
         else:
             self.blocked_videos = list()
         # Import ground truth and proposals.

@@ -11,7 +11,7 @@ from bmn import opts
 from bmn.models import BMN
 import pandas as pd
 from bmn.post_processing import BMN_post_processing
-from eval import evaluation_proposal
+from bmn.eval import evaluation_proposal
 
 sys.dont_write_bytecode = True
 
