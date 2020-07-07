@@ -1,14 +1,14 @@
 import sys
-from dataset import VideoDataSet
-from loss_function import bmn_loss_func, get_mask
+from bmn.dataset import VideoDataSet
+from bmn.loss_function import bmn_loss_func, get_mask
 import os
 import json
 import torch
-import torch.nn.parallel
+from torch.utils.data import DataLoader
 import torch.optim as optim
 import numpy as np
-import opts
-from models import BMN
+from bmn import opts
+from bmn.models import BMN
 import pandas as pd
 from post_processing import BMN_post_processing
 from eval import evaluation_proposal
@@ -39,7 +39,9 @@ def train_BMN(data_loader, model, optimizer, epoch, bm_mask):
         epoch_loss += loss[0].cpu().detach().numpy()
 
     print(
-        "BMN training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
+        "BMN training loss(epoch %d): tem_loss: %.03f, "
+        "pem class_loss: %.03f, pem reg_loss: %.03f, "
+        "total_loss: %.03f" % (
             epoch, epoch_tem_loss / (n_iter + 1),
             epoch_pemclr_loss / (n_iter + 1),
             epoch_pemreg_loss / (n_iter + 1),
@@ -68,7 +70,9 @@ def test_BMN(data_loader, model, epoch, bm_mask):
         epoch_loss += loss[0].cpu().detach().numpy()
 
     print(
-        "BMN training loss(epoch %d): tem_loss: %.03f, pem class_loss: %.03f, pem reg_loss: %.03f, total_loss: %.03f" % (
+        "BMN training loss(epoch %d): tem_loss: %.03f, "
+        "pem class_loss: %.03f, pem reg_loss: %.03f, "
+        "total_loss: %.03f" % (
             epoch, epoch_tem_loss / (n_iter + 1),
             epoch_pemclr_loss / (n_iter + 1),
             epoch_pemreg_loss / (n_iter + 1),
@@ -84,24 +88,28 @@ def test_BMN(data_loader, model, epoch, bm_mask):
 
 def BMN_Train(opt):
     model = BMN(opt)
-    model = torch.nn.DataParallel(model, device_ids=[0, 1]).cuda()
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=opt["training_lr"],
+    # use all gpus
+    model = torch.nn.DataParallel(model).cuda()
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
+                           lr=opt["training_lr"],
                            weight_decay=opt["weight_decay"])
 
-    train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="train"),
-                                               batch_size=opt["batch_size"], shuffle=True,
-                                               num_workers=8, pin_memory=True)
+    train_loader = DataLoader(VideoDataSet(opt, subset="train"),
+                              batch_size=opt["batch_size"], shuffle=True,
+                              num_workers=opt["num_works"], pin_memory=True)
 
-    test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="validation"),
-                                              batch_size=opt["batch_size"], shuffle=False,
-                                              num_workers=8, pin_memory=True)
+    test_loader = DataLoader(VideoDataSet(opt, subset="validation"),
+                             batch_size=opt["batch_size"], shuffle=False,
+                             num_workers=opt["num_works"], pin_memory=True)
 
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["step_size"], gamma=opt["step_gamma"])
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["step_size"],
+                                                gamma=opt["step_gamma"])
     bm_mask = get_mask(opt["temporal_scale"])
     for epoch in range(opt["train_epochs"]):
-        scheduler.step()
+        scheduler.step(None)
         train_BMN(train_loader, model, optimizer, epoch, bm_mask)
-        test_BMN(test_loader, model, epoch, bm_mask)
+        with torch.no_grad():
+            test_BMN(test_loader, model, epoch, bm_mask)
 
 
 def BMN_inference(opt):
@@ -111,9 +119,9 @@ def BMN_inference(opt):
     model.load_state_dict(checkpoint['state_dict'])
     model.eval()
 
-    test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="validation"),
-                                              batch_size=1, shuffle=False,
-                                              num_workers=8, pin_memory=True, drop_last=False)
+    test_loader = DataLoader(VideoDataSet(opt, subset="validation"),
+                             batch_size=1, shuffle=False,
+                             num_workers=opt["num_works"], pin_memory=True, drop_last=False)
     tscale = opt["temporal_scale"]
     with torch.no_grad():
         for idx, input_data in test_loader:
@@ -128,7 +136,6 @@ def BMN_inference(opt):
             reg_confidence = (confidence_map[0][0]).detach().cpu().numpy()
 
             
-            # 遍历起始分界点与结束分界点的组合
             new_props = []
             for idx in range(tscale):
                 for jdx in range(tscale):
@@ -144,7 +151,6 @@ def BMN_inference(opt):
                         score = xmin_score * xmax_score * clr_score * reg_score
                         new_props.append([xmin, xmax, xmin_score, xmax_score, clr_score, reg_score, score])
             new_props = np.stack(new_props)
-            #########################################################################
 
             col_name = ["xmin", "xmax", "xmin_score", "xmax_score", "clr_score", "reg_socre", "score"]
             new_df = pd.DataFrame(new_props, columns=col_name)
@@ -172,11 +178,4 @@ if __name__ == '__main__':
     opt_file = open(opt["checkpoint_path"] + "/opts.json", "w")
     json.dump(opt, opt_file)
     opt_file.close()
-
-    # model = BMN(opt)
-    # a = torch.randn(1, 400, 100)
-    # b, c = model(a)
-    # print(b.shape, c.shape)
-    # print(b)
-    # print(c)
     main(opt)

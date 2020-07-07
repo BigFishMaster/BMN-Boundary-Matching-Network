@@ -4,7 +4,7 @@ import pandas as pd
 import json
 import multiprocessing as mp
 
-from utils import iou_with_anchors
+from bmn.utils import iou_with_anchors
 
 
 def load_json(file):

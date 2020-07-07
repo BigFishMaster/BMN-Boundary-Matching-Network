@@ -4,7 +4,7 @@ import pandas as pd
 import json
 import torch.utils.data as data
 import torch
-from utils import ioa_with_anchors, iou_with_anchors
+from bmn.utils import ioa_with_anchors, iou_with_anchors
 
 
 def load_json(file):
@@ -98,10 +98,12 @@ class VideoDataSet(data.Dataset):
         # calculate the ioa for all timestamp
         match_score_start = []
         for jdx in range(len(anchor_xmin)):
+            # e.g., calculate the maximum overlap ratio between [-0.05, 0.05] and all start points of GT boxes.
             match_score_start.append(np.max(
                 ioa_with_anchors(anchor_xmin[jdx], anchor_xmax[jdx], gt_start_bboxs[:, 0], gt_start_bboxs[:, 1])))
         match_score_end = []
         for jdx in range(len(anchor_xmin)):
+            # e.g., calculate the maximum overlap ratio between [-0.05, 0.05] and all end points of GT boxes.
             match_score_end.append(np.max(
                 ioa_with_anchors(anchor_xmin[jdx], anchor_xmax[jdx], gt_end_bboxs[:, 0], gt_end_bboxs[:, 1])))
         match_score_start = torch.Tensor(match_score_start)
@@ -115,7 +117,7 @@ class VideoDataSet(data.Dataset):
 
 
 if __name__ == '__main__':
-    import opts
+    from bmn import opts
 
     opt = opts.parse_opt()
     opt = vars(opt)

@@ -59,19 +59,19 @@ def pem_reg_loss_func(pred_score, gt_iou_map, mask):
     num_l = torch.sum(u_lmask)
 
     r_m = num_h / num_m
-    u_smmask = torch.Tensor(np.random.rand(*gt_iou_map.shape)).cuda()
+    u_smmask = torch.Tensor(np.random.rand(*gt_iou_map.shape), device=pred_score.device)
     u_smmask = u_mmask * u_smmask
     u_smmask = (u_smmask > (1. - r_m)).float()
 
     r_l = num_h / num_l
-    u_slmask = torch.Tensor(np.random.rand(*gt_iou_map.shape)).cuda()
+    u_slmask = torch.Tensor(np.random.rand(*gt_iou_map.shape), device=pred_score.device)
     u_slmask = u_lmask * u_slmask
     u_slmask = (u_slmask > (1. - r_l)).float()
 
     weights = u_hmask + u_smmask + u_slmask
 
-    loss = F.mse_loss(pred_score * weights, gt_iou_map * weights)
-    loss = 0.5 * torch.sum(loss * torch.ones(*weights.shape).cuda()) / torch.sum(weights)
+    loss = F.mse_loss(pred_score * weights, gt_iou_map * weights, reduction="sum")
+    loss = 0.5 * loss / torch.sum(weights)
 
     return loss
 
@@ -91,3 +91,14 @@ def pem_cls_loss_func(pred_score, gt_iou_map, mask):
     loss_neg = coef_0 * torch.log(1.0 - pred_score + epsilon) * nmask
     loss = -1 * torch.sum(loss_pos + loss_neg) / num_entries
     return loss
+
+
+def test():
+    pred_score = torch.rand(10, 10)
+    gt_iou_map = torch.rand(10, 10)
+    mask = get_mask(10)
+    pem_reg_loss_func(pred_score, gt_iou_map, mask)
+
+
+if __name__ == "__main__":
+    test()

@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-import sys
-sys.path.append('./Evaluation')
-from eval_proposal import ANETproposal
+from bmn.eval_proposal import ANETproposal
 import matplotlib.pyplot as plt
 import numpy as np
+
 
 def run_evaluation(ground_truth_filename, proposal_filename, 
                    max_avg_nr_proposals=100, 
@@ -21,6 +19,7 @@ def run_evaluation(ground_truth_filename, proposal_filename,
     average_nr_proposals = anet_proposal.proposals_per_video
     
     return (average_nr_proposals, average_recall, recall)
+
 
 def plot_metric(opt,average_nr_proposals, average_recall, recall, tiou_thresholds=np.linspace(0.5, 0.95, 10)):
 
@@ -51,13 +50,13 @@ def plot_metric(opt,average_nr_proposals, average_recall, recall, tiou_threshold
     plt.ylim([0, 1.0])
     plt.setp(plt.axes().get_xticklabels(), fontsize=fn_size)
     plt.setp(plt.axes().get_yticklabels(), fontsize=fn_size)
-    #plt.show()    
     plt.savefig(opt["save_fig_path"])
+
 
 def evaluation_proposal(opt):
     
     uniform_average_nr_proposals_valid, uniform_average_recall_valid, uniform_recall_valid = run_evaluation(
-        "./Evaluation/data/activity_net_1_3_new.json",
+        opt["gt_json"],
         opt["result_file"],
         max_avg_nr_proposals=100,
         tiou_thresholds=np.linspace(0.5, 0.95, 10),

@@ -9,6 +9,10 @@ def parse_opt():
         type=str,
         default='train')
     parser.add_argument(
+        '--gt_json',
+        type=str,
+        default="./data/evaluation/activity_net_1_3_new.json")
+    parser.add_argument(
         '--checkpoint_path',
         type=str,
         default='./checkpoint')
@@ -20,7 +24,10 @@ def parse_opt():
         '--weight_decay',
         type=float,
         default=1e-4)
-
+    parser.add_argument(
+        '--num_works',
+        type=int,
+        default=8)
     parser.add_argument(
         '--train_epochs',
         type=int,
@@ -37,7 +44,6 @@ def parse_opt():
         '--step_gamma',
         type=float,
         default=0.1)
-
     # Overall Dataset settings
     parser.add_argument(
         '--video_info',
@@ -55,7 +61,6 @@ def parse_opt():
         '--feature_path',
         type=str,
         default="data/activitynet_feature_cuhk/")
-
     parser.add_argument(
         '--num_sample',
         type=int,
@@ -68,12 +73,10 @@ def parse_opt():
         '--prop_boundary_ratio',
         type=int,
         default=0.5)
-
     parser.add_argument(
         '--feat_dim',
         type=int,
         default=400)
-
     # Post processing
     parser.add_argument(
         '--post_process_thread',

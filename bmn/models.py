@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import math
 import numpy as np
 import torch
@@ -8,10 +7,15 @@ import torch.nn as nn
 class BMN(nn.Module):
     def __init__(self, opt):
         super(BMN, self).__init__()
+        # time scale: 100
         self.tscale = opt["temporal_scale"]
+        # boundary ratio: 0.5
         self.prop_boundary_ratio = opt["prop_boundary_ratio"]
+        # num sample(N): 32
         self.num_sample = opt["num_sample"]
+        # num in each bin: 1
         self.num_sample_perbin = opt["num_sample_perbin"]
+        # feature dim: 400
         self.feat_dim=opt["feat_dim"]
 
         self.hidden_dim_1d = 256
@@ -63,24 +67,41 @@ class BMN(nn.Module):
         )
 
     def forward(self, x):
+        # net: conv1d->relu->conv1d->relu
+        #      feat dim -> hidden_dim_1d -> relu -> hidden_dim_1d -> relu
         base_feature = self.x_1d_b(x)
+        # net: conv1d -> relu -> conv1d -> sigmoid
+        #      hidden_dim_1d -> hidden_dim_1d -> relu -> 1 -> sigmoid
+        # shape: batch size x time scale
         start = self.x_1d_s(base_feature).squeeze(1)
+        # net: conv1d -> relu -> conv1d -> sigmoid
+        #      hidden_dim_1d -> hidden_dim_1d -> relu -> 1 -> sigmoid
+        # shape: batch size x time scale
         end = self.x_1d_e(base_feature).squeeze(1)
+        # shape: batch size x hidden_dim_1d x time scale
         confidence_map = self.x_1d_p(base_feature)
+        # shape: batch size x hidden_dim_1d x num samples x time scale x time scale
         confidence_map = self._boundary_matching_layer(confidence_map)
+        # shape: batch size x hidden_dim3d x time scale x time scale
         confidence_map = self.x_3d_p(confidence_map).squeeze(2)
+        # shape: batch size x 2 x time scale x time scale
         confidence_map = self.x_2d_p(confidence_map)
         return confidence_map, start, end
 
     def _boundary_matching_layer(self, x):
+        # shape x: batch size x dim x time scale
+        #       sample_mask: time scale x (num samples x time scale x time scale)
         input_size = x.size()
         out = torch.matmul(x, self.sample_mask).reshape(input_size[0],input_size[1],self.num_sample,self.tscale,self.tscale)
         return out
 
+    # generate sample mask for a boundary-matching pair
     def _get_interp1d_bin_mask(self, seg_xmin, seg_xmax, tscale, num_sample, num_sample_perbin):
-        # generate sample mask for a boundary-matching pair
+        # total lenght of the start-end duration
         plen = float(seg_xmax - seg_xmin)
+        # the length of each bin
         plen_sample = plen / (num_sample * num_sample_perbin - 1.0)
+        # the positions of each bin
         total_samples = [
             seg_xmin + plen_sample * ii
             for ii in range(num_sample * num_sample_perbin)
@@ -119,15 +140,18 @@ class BMN(nn.Module):
                 else:
                     p_mask = np.zeros([self.tscale, self.num_sample])
                 mask_mat_vector.append(p_mask)
+            # shape: time scale x num samples x time scale(s)
             mask_mat_vector = np.stack(mask_mat_vector, axis=2)
             mask_mat.append(mask_mat_vector)
+        # shape: time scale x num samples x time scale(s) x time scale(e)
         mask_mat = np.stack(mask_mat, axis=3)
         mask_mat = mask_mat.astype(np.float32)
         self.sample_mask = nn.Parameter(torch.Tensor(mask_mat).view(self.tscale, -1), requires_grad=False)
 
 
 if __name__ == '__main__':
-    import opts
+    from bmn import opts
+
     opt = opts.parse_opt()
     opt = vars(opt)
     model=BMN(opt)
