@@ -191,9 +191,9 @@ class ANETproposal(object):
                 t_end_lst.append(result['segment'][1])
                 score_lst.append(result['score'])
         proposal = pd.DataFrame({'video-id': video_lst,
-                                   't-start': t_start_lst,
-                                   't-end': t_end_lst,
-                                   'score': score_lst})
+                                 't-start': t_start_lst,
+                                 't-end': t_end_lst,
+                                 'score': score_lst})
         return proposal
 
     def evaluate(self):
@@ -215,6 +215,93 @@ class ANETproposal(object):
         self.recall = recall
         self.avg_recall = avg_recall
         self.proposals_per_video = proposals_per_video
+
+
+class AliMediaProposal(object):
+
+    def __init__(self, ground_truth_filename=None, proposal_filename=None,
+                 tiou_thresholds=np.linspace(0.5, 0.95, 10),
+                 max_avg_nr_proposals=None,
+                 verbose=False):
+        if not ground_truth_filename:
+            raise IOError('Please input a valid ground truth file.')
+        if not proposal_filename:
+            raise IOError('Please input a valid proposal file.')
+        self.tiou_thresholds = tiou_thresholds
+        self.max_avg_nr_proposals = max_avg_nr_proposals
+        self.verbose = verbose
+        self.recall = None
+        self.avg_recall = None
+        self.proposals_per_video = None
+        # Import ground truth and proposals.
+        self.ground_truth = self._import_ground_truth(ground_truth_filename)
+        self.proposal = self._import_proposal(proposal_filename)
+
+        if self.verbose:
+            nr_gt = len(self.ground_truth)
+            print ('\tNumber of ground truth instances: {}'.format(nr_gt))
+            nr_pred = len(self.proposal)
+            print ('\tNumber of proposals: {}'.format(nr_pred))
+            print ('\tFixed threshold for tiou score: {}'.format(self.tiou_thresholds))
+
+    def _import_ground_truth(self, ground_truth_filename):
+        with open(ground_truth_filename, 'r') as fobj:
+            data = json.load(fobj)
+
+        video_lst, t_start_lst, t_end_lst, label_lst = [], [], [], []
+        for videoid, v in data.items():
+            for ann in v['annotations']:
+                video_lst.append(videoid)
+                t_start_lst.append(ann['segment'][0])
+                t_end_lst.append(ann['segment'][1])
+                # TODO: mapping label from name to index in advance.
+                label_lst.append(ann['label'])
+
+        ground_truth = pd.DataFrame({'video-id': video_lst,
+                                     't-start': t_start_lst,
+                                     't-end': t_end_lst,
+                                     'label': label_lst})
+        return ground_truth
+
+    def _import_proposal(self, proposal_filename):
+        with open(proposal_filename, 'r') as fobj:
+            data = json.load(fobj)
+
+        # Read predictions.
+        video_lst, t_start_lst, t_end_lst = [], [], []
+        score_lst = []
+        for videoid, v in data.items():
+            for result in v:
+                video_lst.append(videoid)
+                t_start_lst.append(result['segment'][0])
+                t_end_lst.append(result['segment'][1])
+                score_lst.append(result['score'])
+        proposal = pd.DataFrame({'video-id': video_lst,
+                                 't-start': t_start_lst,
+                                 't-end': t_end_lst,
+                                 'score': score_lst})
+        return proposal
+
+    def evaluate(self):
+        """Evaluates a proposal file. To measure the performance of a
+        method for the proposal task, we computes the area under the
+        average recall vs average number of proposals per video curve.
+        """
+        recall, avg_recall, proposals_per_video = average_recall_vs_avg_nr_proposals(
+            self.ground_truth, self.proposal,
+            max_avg_nr_proposals=self.max_avg_nr_proposals,
+            tiou_thresholds=self.tiou_thresholds)
+
+        area_under_curve = np.trapz(avg_recall, proposals_per_video)
+
+        if self.verbose:
+            print('[RESULTS] Performance on ActivityNet proposal task.')
+            print('\tArea Under the AR vs AN curve: {}%'.format(100.*float(area_under_curve)/proposals_per_video[-1]))
+
+        self.recall = recall
+        self.avg_recall = avg_recall
+        self.proposals_per_video = proposals_per_video
+
 
 def average_recall_vs_avg_nr_proposals(ground_truth, proposals,
                                        max_avg_nr_proposals=None,
