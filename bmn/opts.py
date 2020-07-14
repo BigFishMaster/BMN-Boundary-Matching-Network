@@ -4,7 +4,6 @@ import argparse
 def parse_opt():
     parser = argparse.ArgumentParser()
     # Overall settings
-    parser.add_argument('--result_dir', type=str, default='output/BMN_results/')
     parser.add_argument('--mode', type=str, default='train')
     parser.add_argument('--gt_json', type=str, default="./data/gt.json")
     parser.add_argument('--checkpoint_path', type=str, default='./checkpoint/')
@@ -36,8 +35,6 @@ def parse_opt():
     parser.add_argument('--soft_nms_alpha', type=float, default=0.4)
     parser.add_argument('--soft_nms_low_thres', type=float, default=0.5)
     parser.add_argument('--soft_nms_high_thres', type=float, default=0.9)
-    parser.add_argument('--result_file', type=str, default="./output/result_proposal.json")
-    parser.add_argument('--save_fig_path', type=str, default="./output/evaluation_result.jpg")
 
     args = parser.parse_args()
 

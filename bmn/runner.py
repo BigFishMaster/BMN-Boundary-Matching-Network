@@ -180,8 +180,12 @@ def main():
     if opt["mode"] == "train":
         BMN_Train(opt)
     elif opt["mode"] == "test":
+        folder = os.path.dirname(opt["test_checkpoint"])
+        opt["result_dir"] = os.path.join(folder, "result/")
         if not os.path.exists(opt["result_dir"]):
             os.makedirs(opt["result_dir"])
+        opt["result_file"] = os.path.join(folder, "result_proposal.json")
+        opt["save_fig_path"] = os.path.join(folder, "result_evaluation.jpg")
         BMN_inference(opt)
         BMN_post_processing(opt)
         evaluation_proposal(opt)
