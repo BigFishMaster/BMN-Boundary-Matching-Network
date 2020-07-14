@@ -124,7 +124,7 @@ def BMN_inference(opt):
     model = BMN(opt)
     if torch.cuda.is_available():
         model = torch.nn.DataParallel(model).cuda()
-    checkpoint_file = os.path.join(opt["checkpoint_path"], "BMN_best.pth.tar")
+    checkpoint_file = opt["test_checkpoint"]
     if os.path.exists(checkpoint_file):
         checkpoint = torch.load(checkpoint_file)
         model.load_state_dict(checkpoint['state_dict'])

@@ -30,6 +30,7 @@ def parse_opt():
     parser.add_argument('--prop_boundary_ratio', type=int, default=0.5)
     parser.add_argument('--feat_dim', type=int, default=2304)
     # Post processing
+    parser.add_argument('--test_checkpoint', type=str, default='./model_test/best_checkpoint.pth.tar')
     parser.add_argument('--num_proposals', type=int, default=100)
     parser.add_argument('--post_process_thread', type=int, default=8)
     parser.add_argument('--soft_nms_alpha', type=float, default=0.4)
