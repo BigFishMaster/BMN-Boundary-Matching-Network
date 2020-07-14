@@ -14,15 +14,15 @@ class VideoDataSet(data.Dataset):
         self.subset = subset
         self.mode = opt["mode"]
         self.feature_path = opt["feature_path"]
-        self.info_file = opt[subset+"_bmn"]
-        self.data_file = opt[subset+"_info"]
+        self.bmn_file = opt[subset+"_bmn"]
+        self.info_file = opt[subset+"_info"]
         self.anchor_xmin = [self.temporal_gap * (i - 0.5) for i in range(self.temporal_scale)]
         self.anchor_xmax = [self.temporal_gap * (i + 0.5) for i in range(self.temporal_scale)]
 
         self._get_dataset_dict()
 
     def _get_dataset_dict(self):
-        input = open(self.data_file, "r").readlines()
+        input = open(self.info_file, "r").readlines()
         self.video_data = []
         for i, item in enumerate(input):
             json_str = item.strip()
@@ -30,36 +30,34 @@ class VideoDataSet(data.Dataset):
             self.video_data.append(data)
         logger.info("In subset {}, length of video data: {}".format(self.subset, len(self.video_data)))
         if self.subset in ["train", "valid"]:
-            input = open(self.info_file, "r").readlines()
-            self.video_info = {}
-            #self.video_info = self.m.dict()
+            input = open(self.bmn_file, "r").readlines()
+            self.video_bmn = {}
             for i, item in enumerate(input):
                 tts = item.strip().split()
                 video_name = tts[0]
-                self.video_info[video_name] = []
-                #self.video_info[video_name] = self.m.list()
+                self.video_bmn[video_name] = []
                 video_seg = tts[1:]
                 length = len(video_seg) // 3
                 for l in range(length):
                     s = 3 * l
                     e = 3 * (l+1)
                     label, start, end = video_seg[s:e]
-                    self.video_info[video_name].append((int(label), float(start), float(end)))
-            logger.info("In subset {}, length of video info: {}".format(self.subset, len(self.video_info)))
+                    self.video_bmn[video_name].append((int(label), float(start), float(end)))
+            logger.info("In subset {}, length of video info: {}".format(self.subset, len(self.video_bmn)))
             new_video_data = []
             #new_video_data = self.m.list()
             count = 0
             for i in range(len(self.video_data)):
                 data = self.video_data[i]
                 video_name = data["video_name"]
-                if video_name not in self.video_info:
+                if video_name not in self.video_bmn:
                     count += 1
                     continue
                 new_video_data.append(data)
-            logger.info("In subset {}, there are {} videos which lack video_info.".format(self.subset, count))
+            logger.info("In subset {}, there are {} videos which lack video_bmn.".format(self.subset, count))
             self.video_data = new_video_data
         else:
-            self.video_info = None
+            self.video_bmn = None
 
     def __getitem__(self, index):
         video_data = self._load_file(index)
@@ -104,7 +102,7 @@ class VideoDataSet(data.Dataset):
         corrected_second = float(feature_frame) / video_frame * video_second  # there are some frames not used
 
         video_name = video_dict["video_name"]
-        video_labels = self.video_info[video_name]
+        video_labels = self.video_bmn[video_name]
 
         # change the measurement from second to percentage
         gt_bbox = []

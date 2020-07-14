@@ -88,7 +88,7 @@ def video_post_process(opt, result_dict, video_list, video_dict):
         result_dict[video_name] = proposal_list
 
 
-def BMN_post_processing(opt):
+def post_processing(opt):
     video_data = get_video_data(opt)
     video_list = list(video_data.keys())
     result_dict = mp.Manager().dict()
