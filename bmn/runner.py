@@ -12,11 +12,12 @@ from bmn.models import BMN
 import pandas as pd
 from bmn.post_processing import BMN_post_processing
 from bmn.eval import evaluation_proposal
+from bmn.logging import init_logger, logger, beautify_info
 
 sys.dont_write_bytecode = True
 
 
-def train_BMN(data_loader, model, optimizer, epoch, bm_mask):
+def train_BMN(data_loader, model, optimizer, epoch, bm_mask, opt):
     model.train()
     epoch_pemreg_loss = 0
     epoch_pemclr_loss = 0
@@ -39,15 +40,14 @@ def train_BMN(data_loader, model, optimizer, epoch, bm_mask):
         epoch_tem_loss += loss[1].cpu().detach().numpy()
         epoch_loss += loss[0].cpu().detach().numpy()
 
-        if (n_iter + 1) % 10 == 0:
-            print(
-                "BMN training loss(epoch %d): tem_loss: %.03f, "
-                "pem class_loss: %.03f, pem reg_loss: %.03f, "
-                "total_loss: %.03f" % (
-                    epoch, epoch_tem_loss / (n_iter + 1),
-                    epoch_pemclr_loss / (n_iter + 1),
-                    epoch_pemreg_loss / (n_iter + 1),
-                    epoch_loss / (n_iter + 1)))
+        if (n_iter + 1) % opt["log_steps"] == 0:
+            logger.info("BMN training loss(epoch %d): tem_loss: %.03f, "
+                        "pem class_loss: %.03f, pem reg_loss: %.03f, "
+                        "total_loss: %.03f" % (
+                         epoch+1, epoch_tem_loss / (n_iter + 1),
+                         epoch_pemclr_loss / (n_iter + 1),
+                         epoch_pemreg_loss / (n_iter + 1),
+                         epoch_loss / (n_iter + 1)))
 
 
 def valid_BMN(data_loader, model, epoch, bm_mask, opt):
@@ -71,22 +71,23 @@ def valid_BMN(data_loader, model, epoch, bm_mask, opt):
         epoch_tem_loss += loss[1].cpu().detach().numpy()
         epoch_loss += loss[0].cpu().detach().numpy()
 
-        if (n_iter + 1) % 10 == 0:
-            print(
-                "BMN training loss(epoch %d): tem_loss: %.03f, "
-                "pem class_loss: %.03f, pem reg_loss: %.03f, "
-                "total_loss: %.03f" % (
-                    epoch, epoch_tem_loss / (n_iter + 1),
-                    epoch_pemclr_loss / (n_iter + 1),
-                    epoch_pemreg_loss / (n_iter + 1),
-                    epoch_loss / (n_iter + 1)))
+        if (n_iter + 1) % opt["log_steps"] == 0:
+            logger.info("BMN valid loss(epoch %d): tem_loss: %.03f, "
+                        "pem class_loss: %.03f, pem reg_loss: %.03f, "
+                        "total_loss: %.03f" % (
+                         epoch+1, epoch_tem_loss / (n_iter + 1),
+                         epoch_pemclr_loss / (n_iter + 1),
+                         epoch_pemreg_loss / (n_iter + 1),
+                         epoch_loss / (n_iter + 1)))
 
     state = {'epoch': epoch + 1,
              'state_dict': model.state_dict()}
-    torch.save(state, os.path.join(opt["checkpoint_path"], "BMN_checkpoint_epoch_{}.pth.tar".format(epoch+1)))
+    torch.save(state, os.path.join(opt["checkpoint_path"], "checkpoint_{}.pth.tar".format(epoch+1)))
+    logger.info("save checkpoint: epoch {}.".format(epoch+1))
     if epoch_loss < opt["best_loss"]:
         opt["best_loss"] = epoch_loss
-        torch.save(state, os.path.join(opt["checkpoint_path"], "BMN_best.pth.tar"))
+        torch.save(state, os.path.join(opt["checkpoint_path"], "best_checkpoint.pth.tar"))
+        logger.info("save best checkpoint: epoch {}.".format(epoch+1))
 
 
 def BMN_Train(opt):
@@ -113,7 +114,7 @@ def BMN_Train(opt):
     if torch.cuda.is_available():
         bm_mask = bm_mask.cuda()
     for epoch in range(opt["train_epochs"]):
-        train_BMN(train_loader, model, optimizer, epoch, bm_mask)
+        train_BMN(train_loader, model, optimizer, epoch, bm_mask, opt)
         with torch.no_grad():
             valid_BMN(valid_loader, model, epoch, bm_mask, opt)
         scheduler.step()
@@ -169,11 +170,12 @@ def BMN_inference(opt):
 def main():
     opt = opts.parse_opt()
     opt = vars(opt)
+
     if not os.path.exists(opt["checkpoint_path"]):
         os.makedirs(opt["checkpoint_path"])
-    opt_file = open(opt["checkpoint_path"] + "opts.json", "w")
-    json.dump(opt, opt_file)
-    opt_file.close()
+
+    init_logger(os.path.join(opt["checkpoint_path"], "bmn.log"))
+    logger.info("create configure successfully: {}".format(beautify_info(opt)))
 
     if opt["mode"] == "train":
         BMN_Train(opt)

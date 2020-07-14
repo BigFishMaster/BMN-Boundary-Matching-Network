@@ -5,7 +5,7 @@ import json
 import torch.utils.data as data
 import torch
 from bmn.utils import ioa_with_anchors, iou_with_anchors
-
+from bmn.logging import logger
 
 class VideoDataSet(data.Dataset):
     def __init__(self, opt, subset="train"):
@@ -28,7 +28,7 @@ class VideoDataSet(data.Dataset):
             json_str = item.strip()
             data = json.loads(json_str)
             self.video_data.append(data)
-        print("In subset {}, length of video data: {}".format(self.subset, len(self.video_data)))
+        logger.info("In subset {}, length of video data: {}".format(self.subset, len(self.video_data)))
         if self.subset in ["train", "valid"]:
             input = open(self.info_file, "r").readlines()
             self.video_info = {}
@@ -45,7 +45,7 @@ class VideoDataSet(data.Dataset):
                     e = 3 * (l+1)
                     label, start, end = video_seg[s:e]
                     self.video_info[video_name].append((int(label), float(start), float(end)))
-            print("In subset {}, length of video info: {}".format(self.subset, len(self.video_info)))
+            logger.info("In subset {}, length of video info: {}".format(self.subset, len(self.video_info)))
             new_video_data = []
             #new_video_data = self.m.list()
             count = 0
@@ -56,7 +56,7 @@ class VideoDataSet(data.Dataset):
                     count += 1
                     continue
                 new_video_data.append(data)
-            print("In subset {}, there are {} videos which lack video_info.".format(self.subset, count))
+            logger.info("In subset {}, there are {} videos which lack video_info.".format(self.subset, count))
             self.video_data = new_video_data
         else:
             self.video_info = None
@@ -163,8 +163,8 @@ if __name__ == '__main__':
                                                batch_size=opt["batch_size"], shuffle=True,
                                                num_workers=0, pin_memory=True, drop_last=False)
     for i, (video_data, confidence, score_start, score_end) in enumerate(train_loader):
-        print("iter:", i)
-        print("video_data:", video_data.shape)
-        print("confidence:", confidence.shape)
-        print("score_start:", score_start.shape)
-        print("score_end:", score_end.shape)
+        logger.info("iter: {}".format(i))
+        logger.info("video_data: {}".format(video_data.shape))
+        logger.info("confidence: {}".format(confidence.shape))
+        logger.info("score_start: {}".format(score_start.shape))
+        logger.info("score_end: {}".format(score_end.shape))

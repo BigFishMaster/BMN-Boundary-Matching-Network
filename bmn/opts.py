@@ -20,6 +20,7 @@ def parse_opt():
     parser.add_argument('--train_epochs', type=int, default=9)
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--step_size', type=int, default=7)
+    parser.add_argument('--log_steps', type=int, default=1)
     parser.add_argument('--step_gamma', type=float, default=0.1)
     # Overall Dataset settings
     parser.add_argument('--temporal_scale', type=int, default=100)
