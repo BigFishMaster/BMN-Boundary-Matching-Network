@@ -1,6 +1,7 @@
 import json
 import numpy as np
 import pandas as pd
+from bmn.logging import logger
 
 
 def interpolated_prec_rec(prec, rec):
@@ -239,10 +240,10 @@ class AliMediaProposal(object):
 
         if self.verbose:
             nr_gt = len(self.ground_truth)
-            print ('\tNumber of ground truth instances: {}'.format(nr_gt))
+            logger.info('Number of ground truth instances: {}'.format(nr_gt))
             nr_pred = len(self.proposal)
-            print ('\tNumber of proposals: {}'.format(nr_pred))
-            print ('\tFixed threshold for tiou score: {}'.format(self.tiou_thresholds))
+            logger.info('Number of proposals: {}'.format(nr_pred))
+            logger.info('Fixed threshold for tiou score: {}'.format(self.tiou_thresholds))
 
     def _import_ground_truth(self, ground_truth_filename):
         with open(ground_truth_filename, 'r') as fobj:
@@ -295,8 +296,8 @@ class AliMediaProposal(object):
         area_under_curve = np.trapz(avg_recall, proposals_per_video)
 
         if self.verbose:
-            print('[RESULTS] Performance on ActivityNet proposal task.')
-            print('\tArea Under the AR vs AN curve: {}%'.format(100.*float(area_under_curve)/proposals_per_video[-1]))
+            logger.info('Performance on AliMedia proposal task.')
+            logger.info('Area Under the AR vs AN curve: {}'.format(float(area_under_curve)/proposals_per_video[-1]))
 
         self.recall = recall
         self.avg_recall = avg_recall
