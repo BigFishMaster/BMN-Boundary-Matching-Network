@@ -135,8 +135,10 @@ def BMN_inference(opt):
                              num_workers=opt["num_works"], pin_memory=True, drop_last=False)
     tscale = opt["temporal_scale"]
     with torch.no_grad():
-        for idx, input_data in test_loader:
-            video_name = test_loader.dataset.video_data[idx[0]]["video_name"]
+        for v_idx, input_data in test_loader:
+            if v_idx % 10 == 0:
+                logger.info("processing video proposal: {}".format(v_idx[0]))
+            video_name = test_loader.dataset.video_data[v_idx[0]]["video_name"]
             if torch.cuda.is_available():
                 input_data = input_data.cuda()
             confidence_map, start, end = model(input_data)
