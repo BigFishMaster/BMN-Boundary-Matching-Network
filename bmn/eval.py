@@ -1,31 +1,41 @@
 from bmn.eval_proposal import AliMediaProposal
+from bmn.eval_detection import AliMediaDetection
+from bmn.logging import logger
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-def run_evaluation(ground_truth_filename, proposal_filename, 
-                   max_avg_nr_proposals=100, 
-                   tiou_thresholds=np.linspace(0.5, 0.95, 10),
-                   subset='validation'):
+def eval_proposal(ground_truth_filename, proposal_filename,
+                  max_avg_nr_proposals=100,
+                  tiou_thresholds=np.linspace(0.5, 0.95, 10)):
 
-    anet_proposal = AliMediaProposal(ground_truth_filename, proposal_filename,
-                                     tiou_thresholds=tiou_thresholds,
-                                     max_avg_nr_proposals=max_avg_nr_proposals,
-                                     verbose=True)
-    anet_proposal.evaluate()
+    proposal = AliMediaProposal(ground_truth_filename, proposal_filename,
+                                tiou_thresholds=tiou_thresholds,
+                                max_avg_nr_proposals=max_avg_nr_proposals,
+                                verbose=True)
+    proposal.evaluate()
     
-    recall = anet_proposal.recall
-    average_recall = anet_proposal.avg_recall
-    average_nr_proposals = anet_proposal.proposals_per_video
+    recall = proposal.recall
+    average_recall = proposal.avg_recall
+    average_nr_proposals = proposal.proposals_per_video
     
-    return (average_nr_proposals, average_recall, recall)
+    return average_nr_proposals, average_recall, recall
 
 
-def plot_metric(opt,average_nr_proposals, average_recall, recall, tiou_thresholds=np.linspace(0.5, 0.95, 10)):
+def eval_detection(ground_truth_filename, proposal_filename,
+                   num_labels=53, tiou_thresholds=np.linspace(0.5, 0.95, 10)):
+
+    detection = AliMediaDetection(ground_truth_filename, proposal_filename,
+                                  num_labels=num_labels, tiou_thresholds=tiou_thresholds,
+                                  verbose=True)
+    detection.evaluate()
+
+
+def plot_metric(opt, average_nr_proposals, average_recall, recall, tiou_thresholds=np.linspace(0.5, 0.95, 10)):
 
     fn_size = 14
     plt.figure(num=None, figsize=(12, 8))
-    ax = plt.subplot(1,1,1)
+    ax = plt.subplot(1, 1, 1)
     
     colors = ['k', 'r', 'yellow', 'b', 'c', 'm', 'b', 'pink', 'lawngreen', 'indigo']
     area_under_curve = np.zeros_like(tiou_thresholds)
@@ -53,17 +63,23 @@ def plot_metric(opt,average_nr_proposals, average_recall, recall, tiou_threshold
     plt.savefig(opt["save_fig_path"])
 
 
-def evaluation_proposal(opt):
-    
-    uniform_average_nr_proposals_valid, uniform_average_recall_valid, uniform_recall_valid = run_evaluation(
-        opt["gt_json"],
-        opt["result_file"],
-        max_avg_nr_proposals=100,
-        tiou_thresholds=np.linspace(0.5, 0.95, 10),
-        subset='validation')
-    
-    plot_metric(opt,uniform_average_nr_proposals_valid, uniform_average_recall_valid, uniform_recall_valid)
-    print("AR@1 is \t",np.mean(uniform_recall_valid[:,0]))
-    print("AR@5 is \t",np.mean(uniform_recall_valid[:,4]))
-    print("AR@10 is \t",np.mean(uniform_recall_valid[:,9]))
-    print("AR@100 is \t",np.mean(uniform_recall_valid[:,-1]))
+def evaluation(opt):
+
+    # eval_type could be: proposal+detection, proposal or detection.
+    eval_type = opt["eval_type"].split("+")
+    if "proposal" in eval_type:
+        uniform_average_nr_proposals, uniform_average_recall, uniform_recall = eval_proposal(
+            opt["gt_json"],
+            opt["result_file"],
+            max_avg_nr_proposals=100,
+            tiou_thresholds=np.linspace(0.5, 0.95, 10))
+        plot_metric(opt, uniform_average_nr_proposals, uniform_average_recall, uniform_recall)
+        logger.info("AR@1 is \t", np.mean(uniform_recall[:, 0]))
+        logger.info("AR@5 is \t", np.mean(uniform_recall[:, 4]))
+        logger.info("AR@10 is \t", np.mean(uniform_recall[:, 9]))
+        logger.info("AR@100 is \t", np.mean(uniform_recall[:, -1]))
+
+    if "detection" in eval_type:
+        eval_detection(opt["gt_json"], opt["result_file"], opt["num_labels"],
+                       tiou_thresholds=np.linspace(0.5, 0.95, 10))
+

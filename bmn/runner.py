@@ -11,7 +11,7 @@ from bmn import opts
 from bmn.models import BMN
 import pandas as pd
 from bmn.post_processing import BMN_post_processing
-from bmn.eval import evaluation_proposal
+from bmn.eval import evaluation
 from bmn.logging import init_logger, logger, beautify_info
 
 sys.dont_write_bytecode = True
@@ -190,7 +190,7 @@ def main():
         opt["save_fig_path"] = os.path.join(folder, "result_evaluation.jpg")
         BMN_inference(opt)
         BMN_post_processing(opt)
-        evaluation_proposal(opt)
+        evaluation(opt)
 
 
 if __name__ == '__main__':

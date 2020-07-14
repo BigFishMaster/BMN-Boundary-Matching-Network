@@ -35,6 +35,7 @@ def parse_opt():
     parser.add_argument('--soft_nms_alpha', type=float, default=0.4)
     parser.add_argument('--soft_nms_low_thres', type=float, default=0.5)
     parser.add_argument('--soft_nms_high_thres', type=float, default=0.9)
+    parser.add_argument('--eval_type', type=str, default="proposal")
 
     args = parser.parse_args()
 

@@ -1,0 +1,199 @@
+import json
+import numpy as np
+import pandas as pd
+from joblib import Parallel, delayed
+from bmn.utils import interpolated_prec_rec
+from bmn.utils import segment_iou
+from bmn.logging import logger
+
+
+class AliMediaDetection(object):
+
+    def __init__(self, ground_truth_filename=None, prediction_filename=None,
+                 num_labels=53, tiou_thresholds=np.linspace(0.5, 0.95, 10),
+                 verbose=False):
+        if not ground_truth_filename:
+            raise IOError('Please input a valid ground truth file.')
+        if not prediction_filename:
+            raise IOError('Please input a valid prediction file.')
+        self.tiou_thresholds = tiou_thresholds
+        self.verbose = verbose
+        self.ap = None
+        # Import ground truth and predictions.
+        self.ground_truth = self._import_ground_truth(
+            ground_truth_filename)
+        self.prediction = self._import_prediction(prediction_filename)
+        self.num_labels = num_labels
+
+        if self.verbose:
+            nr_gt = len(self.ground_truth)
+            logger.info('Number of ground truth instances: {}'.format(len(self.ground_truth)))
+            logger.info('Number of predictions: {}'.format(len(self.prediction)))
+            logger.info('Fixed threshold for tiou score: {}'.format(self.tiou_thresholds))
+
+    def _import_ground_truth(self, ground_truth_filename):
+        with open(ground_truth_filename, 'r') as fobj:
+            data = json.load(fobj)
+
+        video_lst, t_start_lst, t_end_lst, label_lst = [], [], [], []
+        for videoid, v in data.items():
+            for ann in v['annotations']:
+                video_lst.append(videoid)
+                t_start_lst.append(float(ann['segment'][0]))
+                t_end_lst.append(float(ann['segment'][1]))
+                # TODO: mapping label from name to index in advance.
+                label_lst.append(ann['label'])
+
+        ground_truth = pd.DataFrame({'video-id': video_lst,
+                                     't-start': t_start_lst,
+                                     't-end': t_end_lst,
+                                     'label': label_lst})
+        return ground_truth
+
+    def _import_prediction(self, prediction_filename):
+        with open(prediction_filename, 'r') as fobj:
+            data = json.load(fobj)
+
+        # Read predictions.
+        video_lst, t_start_lst, t_end_lst = [], [], []
+        label_lst, score_lst = [], []
+        for videoid, v in data.items():
+            for result in v:
+                label = result['label']
+                video_lst.append(videoid)
+                t_start_lst.append(float(result['segment'][0]))
+                t_end_lst.append(float(result['segment'][1]))
+                label_lst.append(label)
+                score_lst.append(result['score'])
+        prediction = pd.DataFrame({'video-id': video_lst,
+                                   't-start': t_start_lst,
+                                   't-end': t_end_lst,
+                                   'label': label_lst,
+                                   'score': score_lst})
+        return prediction
+
+    def _get_predictions_with_label(self, prediction_by_label, cidx):
+        """Get all predicitons of the given label. Return empty DataFrame if there
+        is no predcitions with the given label.
+        """
+        try:
+            return prediction_by_label.get_group(cidx).reset_index(drop=True)
+        except:
+            logger.warn('Warning: No predictions of label \'%s\' were provdied.' % cidx)
+            return pd.DataFrame()
+
+    def wrapper_compute_average_precision(self):
+        """Computes average precision for each class in the subset.
+        """
+        ap = np.zeros((len(self.tiou_thresholds), self.num_labels))
+
+        # Adaptation to query faster
+        ground_truth_by_label = self.ground_truth.groupby('label')
+        prediction_by_label = self.prediction.groupby('label')
+
+        results = Parallel(n_jobs=self.num_labels)(
+                    delayed(compute_average_precision_detection)(
+                        ground_truth=ground_truth_by_label.get_group(cidx).reset_index(drop=True),
+                        prediction=self._get_predictions_with_label(prediction_by_label, cidx),
+                        tiou_thresholds=self.tiou_thresholds,
+                    ) for cidx in range(self.num_labels))
+
+        for cidx in range(self.num_labels):
+            ap[:, cidx] = results[cidx]
+
+        return ap
+
+    def evaluate(self):
+        """Evaluates a prediction file. For the detection task we measure the
+        interpolated mean average precision to measure the performance of a
+        method.
+        """
+        self.ap = self.wrapper_compute_average_precision()
+
+        self.mAP = self.ap.mean(axis=1)
+        self.average_mAP = self.mAP.mean()
+
+        if self.verbose:
+            logger.info('Performance on Alimedia detection task.')
+            logger.info('Average-mAP: {}'.format(self.average_mAP))
+
+
+def compute_average_precision_detection(ground_truth, prediction, tiou_thresholds=np.linspace(0.5, 0.95, 10)):
+    """Compute average precision (detection task) between ground truth and
+    predictions data frames. If multiple predictions occurs for the same
+    predicted segment, only the one with highest score is matches as
+    true positive. This code is greatly inspired by Pascal VOC devkit.
+
+    Parameters
+    ----------
+    ground_truth : df
+        Data frame containing the ground truth instances.
+        Required fields: ['video-id', 't-start', 't-end']
+    prediction : df
+        Data frame containing the prediction instances.
+        Required fields: ['video-id, 't-start', 't-end', 'score']
+    tiou_thresholds : 1darray, optional
+        Temporal intersection over union threshold.
+
+    Outputs
+    -------
+    ap : float
+        Average precision score.
+    """
+    ap = np.zeros(len(tiou_thresholds))
+    if prediction.empty:
+        return ap
+
+    npos = float(len(ground_truth))
+    lock_gt = np.ones((len(tiou_thresholds),len(ground_truth))) * -1
+    # Sort predictions by decreasing score order.
+    sort_idx = prediction['score'].values.argsort()[::-1]
+    prediction = prediction.loc[sort_idx].reset_index(drop=True)
+
+    # Initialize true positive and false positive vectors.
+    tp = np.zeros((len(tiou_thresholds), len(prediction)))
+    fp = np.zeros((len(tiou_thresholds), len(prediction)))
+
+    # Adaptation to query faster
+    ground_truth_gbvn = ground_truth.groupby('video-id')
+
+    # Assigning true positive to truly ground truth instances.
+    for idx, this_pred in prediction.iterrows():
+
+        try:
+            # Check if there is at least one ground truth in the video associated.
+            ground_truth_videoid = ground_truth_gbvn.get_group(this_pred['video-id'])
+        except Exception as e:
+            fp[:, idx] = 1
+            continue
+
+        this_gt = ground_truth_videoid.reset_index()
+        tiou_arr = segment_iou(this_pred[['t-start', 't-end']].values,
+                               this_gt[['t-start', 't-end']].values)
+        # We would like to retrieve the predictions with highest tiou score.
+        tiou_sorted_idx = tiou_arr.argsort()[::-1]
+        for tidx, tiou_thr in enumerate(tiou_thresholds):
+            for jdx in tiou_sorted_idx:
+                if tiou_arr[jdx] < tiou_thr:
+                    fp[tidx, idx] = 1
+                    break
+                if lock_gt[tidx, this_gt.loc[jdx]['index']] >= 0:
+                    continue
+                # Assign as true positive after the filters above.
+                tp[tidx, idx] = 1
+                lock_gt[tidx, this_gt.loc[jdx]['index']] = idx
+                break
+
+            if fp[tidx, idx] == 0 and tp[tidx, idx] == 0:
+                fp[tidx, idx] = 1
+
+    tp_cumsum = np.cumsum(tp, axis=1).astype(np.float)
+    fp_cumsum = np.cumsum(fp, axis=1).astype(np.float)
+    recall_cumsum = tp_cumsum / npos
+
+    precision_cumsum = tp_cumsum / (tp_cumsum + fp_cumsum)
+
+    for tidx in range(len(tiou_thresholds)):
+        ap[tidx] = interpolated_prec_rec(precision_cumsum[tidx,:], recall_cumsum[tidx,:])
+
+    return ap
