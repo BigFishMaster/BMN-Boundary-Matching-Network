@@ -59,12 +59,12 @@ def pem_reg_loss_func(pred_score, gt_iou_map, mask):
     num_l = torch.sum(u_lmask)
 
     r_m = num_h / num_m
-    u_smmask = torch.Tensor(np.random.rand(*gt_iou_map.shape), device=pred_score.device)
+    u_smmask = torch.tensor(np.random.rand(*gt_iou_map.shape), device=pred_score.device)
     u_smmask = u_mmask * u_smmask
     u_smmask = (u_smmask > (1. - r_m)).float()
 
     r_l = num_h / num_l
-    u_slmask = torch.Tensor(np.random.rand(*gt_iou_map.shape), device=pred_score.device)
+    u_slmask = torch.tensor(np.random.rand(*gt_iou_map.shape), device=pred_score.device)
     u_slmask = u_lmask * u_slmask
     u_slmask = (u_slmask > (1. - r_l)).float()
 
