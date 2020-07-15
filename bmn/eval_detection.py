@@ -39,7 +39,7 @@ class AliMediaDetection(object):
         activity_index, cidx = {}, 0
         video_lst, t_start_lst, t_end_lst, label_lst = [], [], [], []
         for videoid, v in data.items():
-            for ann in v:
+            for ann in v["annotations"]:
                 if ann['label'] not in activity_index:
                     activity_index[ann['label']] = cidx
                     cidx += 1
