@@ -308,6 +308,8 @@ def main():
     elif opt["mode"] == "classify":
         folder = os.path.dirname(opt["test_checkpoint"])
         opt["proposal_file"] = os.path.join(folder, "result_proposal.json")
+        opt["save_fig_path"] = os.path.join(folder, "result_evaluation.jpg")
+
         opt["detection_file"] = os.path.join(folder, "result_detection.json")
 
         classify(opt)
