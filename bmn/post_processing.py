@@ -110,6 +110,6 @@ def post_processing(opt):
         p.join()
 
     result_dict = dict(result_dict)
-    fout = open(opt["result_file"], "w")
+    fout = open(opt["proposal_file"], "w")
     json.dump(result_dict, fout)
     fout.close()
