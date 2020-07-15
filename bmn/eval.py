@@ -73,10 +73,10 @@ def evaluation(opt):
             max_avg_nr_proposals=100,
             tiou_thresholds=np.linspace(0.5, 0.95, 10))
         plot_metric(opt, uniform_average_nr_proposals, uniform_average_recall, uniform_recall)
-        logger.info("AR@1 is \t{}".format(np.mean(uniform_recall[:, 0])))
-        logger.info("AR@5 is \t{}".format(np.mean(uniform_recall[:, 4])))
-        logger.info("AR@10 is \t{}".format(np.mean(uniform_recall[:, 9])))
-        logger.info("AR@100 is \t{}".format(np.mean(uniform_recall[:, -1])))
+        logger.info("AR@1   is {}".format(np.mean(uniform_recall[:, 0])))
+        logger.info("AR@5   is {}".format(np.mean(uniform_recall[:, 4])))
+        logger.info("AR@10  is {}".format(np.mean(uniform_recall[:, 9])))
+        logger.info("AR@100 is {}".format(np.mean(uniform_recall[:, -1])))
 
     if "detection" in eval_type:
         eval_detection(opt["gt_json"], opt["detection_file"], tiou_thresholds=np.linspace(0.5, 0.95, 10))
