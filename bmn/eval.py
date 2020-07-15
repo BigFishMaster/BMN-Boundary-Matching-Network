@@ -1,6 +1,6 @@
 from bmn.eval_proposal import AliMediaProposal
 from bmn.eval_detection import AliMediaDetection
-from bmn.logging import logger
+from bmn.utils.logging import logger
 import matplotlib.pyplot as plt
 import numpy as np
 

@@ -1,8 +1,8 @@
 import json
 import numpy as np
 import pandas as pd
-from bmn.logging import logger
-from bmn.utils import wrapper_segment_iou
+from bmn.utils.logging import logger
+from bmn.utils.misc import wrapper_segment_iou
 
 
 class ANETproposal(object):

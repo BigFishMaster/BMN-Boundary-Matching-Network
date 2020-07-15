@@ -2,9 +2,9 @@ import json
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
-from bmn.utils import interpolated_prec_rec
-from bmn.utils import segment_iou
-from bmn.logging import logger
+from bmn.utils.misc import interpolated_prec_rec
+from bmn.utils.misc import segment_iou
+from bmn.utils.logging import logger
 
 
 class AliMediaDetection(object):

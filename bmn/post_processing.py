@@ -4,7 +4,7 @@ import pandas as pd
 import json
 import multiprocessing as mp
 
-from bmn.utils import iou_with_anchors
+from bmn.utils.misc import iou_with_anchors
 
 
 def get_video_data(opt):

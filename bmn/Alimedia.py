@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
-import numpy as np
 import json
 import torch.utils.data as data
 import torch
-from bmn.utils import ioa_with_anchors, iou_with_anchors
-from bmn.logging import logger
+from bmn.utils.misc import ioa_with_anchors, iou_with_anchors
+from bmn.utils.logging import logger
+import numpy as np
+
 
 class VideoDataSet(data.Dataset):
     def __init__(self, opt, subset="train"):

@@ -14,7 +14,7 @@ from bmn.models import BMN
 import pandas as pd
 from bmn.post_processing import post_processing
 from bmn.eval import evaluation
-from bmn.logging import init_logger, logger, beautify_info
+from bmn.utils.logging import init_logger, logger, beautify_info
 from torch import multiprocessing
 sys.dont_write_bytecode = True
 
@@ -43,13 +43,15 @@ def train_BMN(data_loader, model, optimizer, epoch, bm_mask, opt):
         epoch_loss += loss[0].cpu().detach().numpy()
 
         if (n_iter + 1) % opt["log_steps"] == 0:
+            lr = optimizer.param_groups[0]["lr"]
             logger.info("BMN training loss(epoch %d): tem_loss: %.03f, "
                         "pem class_loss: %.03f, pem reg_loss: %.03f, "
-                        "total_loss: %.03f" % (
+                        "total_loss: %.03f, lr: %f" % (
                          epoch+1, epoch_tem_loss / (n_iter + 1),
                          epoch_pemclr_loss / (n_iter + 1),
                          epoch_pemreg_loss / (n_iter + 1),
-                         epoch_loss / (n_iter + 1)))
+                         epoch_loss / (n_iter + 1),
+                         lr))
 
 
 def valid_BMN(data_loader, model, epoch, bm_mask, opt):
@@ -258,7 +260,7 @@ def classify(opt):
     index_queue = ctx.Queue()
     result_queue = ctx.Queue()
     video_workers = [ctx.Process(target=get_classify,
-                                 args=(model, video_data, video_proposal, index_queue, result_queue))
+                                 args=(model, opt, video_data, video_proposal, index_queue, result_queue))
                      for i in range(opt["num_works"])]
     for w in video_workers:
         w.daemon = True
