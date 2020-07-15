@@ -175,6 +175,14 @@ def inference(opt):
 
 def get_classify(model, opt, video_data, video_proposal, index_queue, result_queue):
     feature_path = opt["feature_path"]
+    mode = opt["mode"]
+    if mode == "submit":
+        # convert label to name
+        label_file = opt["submit_label_file"]
+        label2name = {i:line.strip() for i, line in enumerate(open(label_file, "r", encoding="utf8").readlines())}
+    else:
+        label2name = None
+
     while True:
         video_name = index_queue.get()
         prop = video_proposal[video_name].copy()
@@ -198,6 +206,8 @@ def get_classify(model, opt, video_data, video_proposal, index_queue, result_que
             end_idx = int(end / corrected_second * N)
             prop_feature = feature[start_idx:end_idx].contiguous()
             top1_score, top1_label = model.predict(prop_feature)
+            if label2name is not None:
+                top1_label = label2name[top1_label]
             dic0["label"] = top1_label
             dic0["score"] = score * top1_score
         result = {video_name: prop}
@@ -309,9 +319,7 @@ def main():
         folder = os.path.dirname(opt["test_checkpoint"])
         opt["proposal_file"] = os.path.join(folder, "result_proposal.json")
         opt["save_fig_path"] = os.path.join(folder, "result_evaluation.jpg")
-
         opt["detection_file"] = os.path.join(folder, "result_detection.json")
-
         classify(opt)
         evaluation(opt)
     elif opt["mode"] == "eval":
@@ -320,6 +328,17 @@ def main():
         opt["save_fig_path"] = os.path.join(folder, "result_evaluation.jpg")
         opt["detection_file"] = os.path.join(folder, "result_detection.json")
         evaluation(opt)
+    elif opt["mode"] == "submit":
+        folder = os.path.dirname(opt["test_checkpoint"])
+        opt["result_dir"] = os.path.join(folder, "result/")
+        if not os.path.exists(opt["result_dir"]):
+            os.makedirs(opt["result_dir"])
+        opt["proposal_file"] = os.path.join(folder, "submit_result_proposal.json")
+        opt["detection_file"] = os.path.join(folder, "submit_result_detection.json")
+        inference(opt)
+        post_processing(opt)
+        classify(opt)
+
 
 
 if __name__ == '__main__':

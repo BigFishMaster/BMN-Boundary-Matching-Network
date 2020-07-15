@@ -29,6 +29,7 @@ def parse_opt():
     parser.add_argument('--prop_boundary_ratio', type=int, default=0.5)
     parser.add_argument('--feat_dim', type=int, default=2304)
     # Post processing
+    parser.add_argument('--submit_label_file', type=str, default='./data/labels.txt')
     parser.add_argument('--test_checkpoint', type=str, default='./model_test/best_checkpoint.pth.tar')
     parser.add_argument('--test_classifier', type=str, default=None)
     parser.add_argument('--num_proposals', type=int, default=100)
