@@ -17,3 +17,4 @@ markdown>=2.6.8
 werkzeug>=0.11.15
 kiwisolver>=1.1.0
 portalocker
+joblib
