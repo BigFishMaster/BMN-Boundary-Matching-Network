@@ -22,11 +22,10 @@ def eval_proposal(ground_truth_filename, proposal_filename,
     return average_nr_proposals, average_recall, recall
 
 
-def eval_detection(ground_truth_filename, proposal_filename,
-                   num_labels=53, tiou_thresholds=np.linspace(0.5, 0.95, 10)):
+def eval_detection(ground_truth_filename, proposal_filename, tiou_thresholds=np.linspace(0.5, 0.95, 10)):
 
     detection = AliMediaDetection(ground_truth_filename, proposal_filename,
-                                  num_labels=num_labels, tiou_thresholds=tiou_thresholds,
+                                  tiou_thresholds=tiou_thresholds,
                                   verbose=True)
     detection.evaluate()
 
@@ -74,12 +73,11 @@ def evaluation(opt):
             max_avg_nr_proposals=100,
             tiou_thresholds=np.linspace(0.5, 0.95, 10))
         plot_metric(opt, uniform_average_nr_proposals, uniform_average_recall, uniform_recall)
-        logger.info("AR@1 is \t", np.mean(uniform_recall[:, 0]))
-        logger.info("AR@5 is \t", np.mean(uniform_recall[:, 4]))
-        logger.info("AR@10 is \t", np.mean(uniform_recall[:, 9]))
-        logger.info("AR@100 is \t", np.mean(uniform_recall[:, -1]))
+        logger.info("AR@1 is \t{}".format(np.mean(uniform_recall[:, 0])))
+        logger.info("AR@5 is \t{}".format(np.mean(uniform_recall[:, 4])))
+        logger.info("AR@10 is \t{}".format(np.mean(uniform_recall[:, 9])))
+        logger.info("AR@100 is \t{}".format(np.mean(uniform_recall[:, -1])))
 
     if "detection" in eval_type:
-        eval_detection(opt["gt_json"], opt["detection_file"], opt["num_labels"],
-                       tiou_thresholds=np.linspace(0.5, 0.95, 10))
+        eval_detection(opt["gt_json"], opt["detection_file"], tiou_thresholds=np.linspace(0.5, 0.95, 10))
 

@@ -1,7 +1,9 @@
 import json
+
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+
 from bmn.utils.misc import interpolated_prec_rec
 from bmn.utils.misc import segment_iou
 from bmn.utils.logging import logger
@@ -10,7 +12,7 @@ from bmn.utils.logging import logger
 class AliMediaDetection(object):
 
     def __init__(self, ground_truth_filename=None, prediction_filename=None,
-                 num_labels=53, tiou_thresholds=np.linspace(0.5, 0.95, 10),
+                 tiou_thresholds=np.linspace(0.5, 0.95, 10),
                  verbose=False):
         if not ground_truth_filename:
             raise IOError('Please input a valid ground truth file.')
@@ -20,13 +22,11 @@ class AliMediaDetection(object):
         self.verbose = verbose
         self.ap = None
         # Import ground truth and predictions.
-        self.ground_truth = self._import_ground_truth(
+        self.ground_truth, self.activity_index = self._import_ground_truth(
             ground_truth_filename)
         self.prediction = self._import_prediction(prediction_filename)
-        self.num_labels = num_labels
 
         if self.verbose:
-            nr_gt = len(self.ground_truth)
             logger.info('Number of ground truth instances: {}'.format(len(self.ground_truth)))
             logger.info('Number of predictions: {}'.format(len(self.prediction)))
             logger.info('Fixed threshold for tiou score: {}'.format(self.tiou_thresholds))
@@ -35,20 +35,24 @@ class AliMediaDetection(object):
         with open(ground_truth_filename, 'r') as fobj:
             data = json.load(fobj)
 
+        # Read ground truth data.
+        activity_index, cidx = {}, 0
         video_lst, t_start_lst, t_end_lst, label_lst = [], [], [], []
         for videoid, v in data.items():
-            for ann in v['annotations']:
+            for ann in v:
+                if ann['label'] not in activity_index:
+                    activity_index[ann['label']] = cidx
+                    cidx += 1
                 video_lst.append(videoid)
                 t_start_lst.append(float(ann['segment'][0]))
                 t_end_lst.append(float(ann['segment'][1]))
-                # TODO: mapping label from name to index in advance.
-                label_lst.append(ann['label'])
+                label_lst.append(activity_index[ann['label']])
 
         ground_truth = pd.DataFrame({'video-id': video_lst,
                                      't-start': t_start_lst,
                                      't-end': t_end_lst,
                                      'label': label_lst})
-        return ground_truth
+        return ground_truth, activity_index
 
     def _import_prediction(self, prediction_filename):
         with open(prediction_filename, 'r') as fobj:
@@ -59,7 +63,7 @@ class AliMediaDetection(object):
         label_lst, score_lst = [], []
         for videoid, v in data.items():
             for result in v:
-                label = result['label']
+                label = self.activity_index[result['label']]
                 video_lst.append(videoid)
                 t_start_lst.append(float(result['segment'][0]))
                 t_end_lst.append(float(result['segment'][1]))
@@ -72,34 +76,34 @@ class AliMediaDetection(object):
                                    'score': score_lst})
         return prediction
 
-    def _get_predictions_with_label(self, prediction_by_label, cidx):
+    def _get_predictions_with_label(self, prediction_by_label, label_name, cidx):
         """Get all predicitons of the given label. Return empty DataFrame if there
         is no predcitions with the given label.
         """
         try:
             return prediction_by_label.get_group(cidx).reset_index(drop=True)
         except:
-            logger.warn('Warning: No predictions of label \'%s\' were provdied.' % cidx)
+            logger.warn('Warning: No predictions of label \'%s\' were provdied.' % label_name)
             return pd.DataFrame()
 
     def wrapper_compute_average_precision(self):
         """Computes average precision for each class in the subset.
         """
-        ap = np.zeros((len(self.tiou_thresholds), self.num_labels))
+        ap = np.zeros((len(self.tiou_thresholds), len(self.activity_index)))
 
         # Adaptation to query faster
         ground_truth_by_label = self.ground_truth.groupby('label')
         prediction_by_label = self.prediction.groupby('label')
 
-        results = Parallel(n_jobs=self.num_labels)(
+        results = Parallel(n_jobs=len(self.activity_index))(
                     delayed(compute_average_precision_detection)(
                         ground_truth=ground_truth_by_label.get_group(cidx).reset_index(drop=True),
-                        prediction=self._get_predictions_with_label(prediction_by_label, cidx),
+                        prediction=self._get_predictions_with_label(prediction_by_label, label_name, cidx),
                         tiou_thresholds=self.tiou_thresholds,
-                    ) for cidx in range(self.num_labels))
+                    ) for label_name, cidx in self.activity_index.items())
 
-        for cidx in range(self.num_labels):
-            ap[:, cidx] = results[cidx]
+        for i, cidx in enumerate(self.activity_index.values()):
+            ap[:,cidx] = results[i]
 
         return ap
 
@@ -114,7 +118,7 @@ class AliMediaDetection(object):
         self.average_mAP = self.mAP.mean()
 
         if self.verbose:
-            logger.info('Performance on Alimedia detection task.')
+            logger.info('Performance on AliMedia detection task.')
             logger.info('Average-mAP: {}'.format(self.average_mAP))
 
 
