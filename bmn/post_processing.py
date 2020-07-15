@@ -98,9 +98,12 @@ def post_processing(opt):
     threads = opt["post_process_thread"]
     num_per_thread = num // threads
     processes = []
-    for t in range(threads):
+    # do not drop the remainder.
+    for t in range(threads+1):
         start = t * num_per_thread
         end = min((t + 1) * num_per_thread, num)
+        # v wll be empty if num == threads * num_per_thread
+        # it do not affect the post-processing of video.
         v = video_list[start:end]
         p = mp.Process(target=video_post_process, args=(opt, result_dict, v, video_data))
         p.start()
