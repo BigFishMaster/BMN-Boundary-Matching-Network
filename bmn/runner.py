@@ -207,10 +207,10 @@ def get_classify(model, opt, video_data, video_proposal, index_queue, result_que
 class LinearModel:
     """a linear model with weight (dim x num_labels) and bias (num_labels)."""
     def __init__(self, opt):
-        if opt["test_checkpoint_linear"] is None:
-            weight, bias = torch.load(opt["test_checkpoint"]+".linear")
-        else:
-            weight, bias = torch.load(opt["test_checkpoint_linear"])
+        if opt["test_classifier"] is None:
+            raise ValueError("test_classifier is None. Please specify a test_classifier")
+
+        weight, bias = torch.load(opt["test_classifier"])
         self.weight = weight.t()
         self.bias = bias
 
@@ -300,7 +300,7 @@ def main():
         opt["result_dir"] = os.path.join(folder, "result/")
         if not os.path.exists(opt["result_dir"]):
             os.makedirs(opt["result_dir"])
-        opt["result_file"] = os.path.join(folder, "result_proposal.json")
+        opt["proposal_file"] = os.path.join(folder, "result_proposal.json")
         opt["save_fig_path"] = os.path.join(folder, "result_evaluation.jpg")
         inference(opt)
         post_processing(opt)
@@ -311,6 +311,7 @@ def main():
         opt["detection_file"] = os.path.join(folder, "result_detection.json")
 
         classify(opt)
+        evaluation(opt)
 
 
 if __name__ == '__main__':
