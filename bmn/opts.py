@@ -32,6 +32,7 @@ def parse_opt():
     parser.add_argument('--test_checkpoint', type=str, default='./model_test/best_checkpoint.pth.tar')
     parser.add_argument('--test_classifier', type=str, default=None)
     parser.add_argument('--num_proposals', type=int, default=100)
+    parser.add_argument('--num_labels', type=int, default=53)
     parser.add_argument('--post_process_thread', type=int, default=8)
     parser.add_argument('--soft_nms_alpha', type=float, default=0.4)
     parser.add_argument('--soft_nms_low_thres', type=float, default=0.5)
