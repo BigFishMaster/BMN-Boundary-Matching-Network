@@ -61,14 +61,19 @@ class AliMediaDetection(object):
         # Read predictions.
         video_lst, t_start_lst, t_end_lst = [], [], []
         label_lst, score_lst = [], []
+        miss_labels = set()
         for videoid, v in data.items():
             for result in v:
+                if result["label"] not in self.activity_index:
+                    miss_labels.update([result["label"]])
+                    continue
                 label = self.activity_index[result['label']]
                 video_lst.append(videoid)
                 t_start_lst.append(float(result['segment'][0]))
                 t_end_lst.append(float(result['segment'][1]))
                 label_lst.append(label)
                 score_lst.append(result['score'])
+        logger.warn("Missing labels are {}".format(miss_labels))
         prediction = pd.DataFrame({'video-id': video_lst,
                                    't-start': t_start_lst,
                                    't-end': t_end_lst,
