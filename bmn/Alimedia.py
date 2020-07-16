@@ -15,8 +15,8 @@ class VideoDataSet(data.Dataset):
         self.mode = mode
         self.feature_path = opt["feature_path"]
         # the bmn files are not used when mode = "test" or "submit".
-        self.bmn_file = os.path.join(opt["data_folder"], mode+"_bmn.txt")
-        self.info_file = os.path.join(opt["data_folder"], mode+"_info.txt")
+        self.bmn_file = os.path.join(opt["data_folder"], "bmn_{}.txt".format(mode))
+        self.info_file = os.path.join(opt["data_folder"], "info_{}.txt".format(mode))
         self.anchor_xmin = [self.temporal_gap * (i - 0.5) for i in range(self.temporal_scale)]
         self.anchor_xmax = [self.temporal_gap * (i + 0.5) for i in range(self.temporal_scale)]
 

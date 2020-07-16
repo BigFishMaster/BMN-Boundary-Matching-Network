@@ -87,7 +87,7 @@ def get_classify(model, opt, video_data, video_proposal, index_queue, result_que
 def classify(opt):
     # parse video info file.
     mode = opt["mode"]
-    input = open(os.path.join(opt["data_folder"], opt["mode"] + "_info.txt")).readlines()
+    input = open(os.path.join(opt["data_folder"], "info_{}.txt".format(opt["mode"]))).readlines()
     video_data = {}
     for i, item in enumerate(input):
         json_str = item.strip()

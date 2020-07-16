@@ -9,7 +9,7 @@ from bmn.utils.misc import iou_with_anchors
 
 
 def get_video_data(opt):
-    input = open(os.path.join(opt["data_folder"], opt["mode"] + "_info.txt")).readlines()
+    input = open(os.path.join(opt["data_folder"], "info_{}.txt".format(opt["mode"]))).readlines()
     video_data = {}
     for i, item in enumerate(input):
         json_str = item.strip()
