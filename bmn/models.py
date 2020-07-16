@@ -7,20 +7,27 @@ import torch.nn as nn
 class BMN(nn.Module):
     def __init__(self, opt):
         super(BMN, self).__init__()
-        # time scale: 100
+        # time scale, default: 100
         self.tscale = opt["temporal_scale"]
-        # boundary ratio: 0.5
+        # boundary ratio, default: 0.5
         self.prop_boundary_ratio = opt["prop_boundary_ratio"]
-        # num sample(N): 32
+        # num sample(N), default: 32
         self.num_sample = opt["num_sample"]
-        # num in each bin: 1
+        # num in each bin, default: 3
         self.num_sample_perbin = opt["num_sample_perbin"]
-        # feature dim: 400
+        # feature dim, default: 2304
         self.feat_dim=opt["feat_dim"]
+        self.hidden_size = [int(h) for h in opt["hidden_size"].split(",")] if opt["hidden_size"] is not None else None
 
-        self.hidden_dim_1d = 256
-        self.hidden_dim_2d = 128
-        self.hidden_dim_3d = 512
+        if self.hidden_size is None:
+            self.hidden_dim_1d = 256
+            self.hidden_dim_2d = 128
+            self.hidden_dim_3d = 512
+        else:
+            self.hidden_dim_1d = self.hidden_size[0]
+            self.hidden_dim_2d = self.hidden_size[1]
+            self.hidden_dim_3d = self.hidden_size[2]
+
 
         self._get_interp1d_mask()
 
@@ -113,9 +120,9 @@ class BMN(nn.Module):
             for sample in bin_samples:
                 sample_upper = math.ceil(sample)
                 sample_decimal, sample_down = math.modf(sample)
-                if int(sample_down) <= (tscale - 1) and int(sample_down) >= 0:
+                if (tscale - 1) >= int(sample_down) >= 0:
                     bin_vector[int(sample_down)] += 1 - sample_decimal
-                if int(sample_upper) <= (tscale - 1) and int(sample_upper) >= 0:
+                if (tscale - 1) >= int(sample_upper) >= 0:
                     bin_vector[int(sample_upper)] += sample_decimal
             bin_vector = 1.0 / num_sample_perbin * bin_vector
             p_mask.append(bin_vector)
@@ -146,15 +153,14 @@ class BMN(nn.Module):
         # shape: time scale x num samples x time scale(s) x time scale(e)
         mask_mat = np.stack(mask_mat, axis=3)
         mask_mat = mask_mat.astype(np.float32)
-        self.sample_mask = nn.Parameter(torch.Tensor(mask_mat).view(self.tscale, -1), requires_grad=False)
+        self.sample_mask = nn.Parameter(torch.tensor(mask_mat).view(self.tscale, -1), requires_grad=False)
 
 
 if __name__ == '__main__':
     from bmn import opts
-
     opt = opts.parse_opt()
     opt = vars(opt)
-    model=BMN(opt)
-    input=torch.randn(2,400,100)
-    a,b,c=model(input)
-    print(a.shape,b.shape,c.shape)
+    model = BMN(opt)
+    input = torch.randn(2, 400, 100)
+    a, b, c = model(input)
+    print(a.shape, b.shape, c.shape)

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import numpy as np
 import pandas as pd
 import json
@@ -8,7 +9,7 @@ from bmn.utils.misc import iou_with_anchors
 
 
 def get_video_data(opt):
-    input = open(opt["test_info"], "r").readlines()
+    input = open(os.path.join(opt["data_folder"], opt["mode"] + "_info.txt")).readlines()
     video_data = {}
     for i, item in enumerate(input):
         json_str = item.strip()
@@ -61,7 +62,7 @@ def soft_nms(df, alpha, t1, t2):
     return newDf
 
 
-def video_post_process(opt, result_dict, video_list, video_dict):
+def get_proposal(opt, result_dict, video_list, video_dict):
     for video_name in video_list:
         df = pd.read_csv(opt["result_dir"] + video_name + ".csv")
 
@@ -88,7 +89,7 @@ def video_post_process(opt, result_dict, video_list, video_dict):
         result_dict[video_name] = proposal_list
 
 
-def post_processing(opt):
+def proposal(opt):
     video_data = get_video_data(opt)
     video_list = list(video_data.keys())
     result_dict = mp.Manager().dict()
@@ -105,7 +106,7 @@ def post_processing(opt):
         # v wll be empty if num == threads * num_per_thread
         # it do not affect the post-processing of video.
         v = video_list[start:end]
-        p = mp.Process(target=video_post_process, args=(opt, result_dict, v, video_data))
+        p = mp.Process(target=get_proposal, args=(opt, result_dict, v, video_data))
         p.start()
         processes.append(p)
 

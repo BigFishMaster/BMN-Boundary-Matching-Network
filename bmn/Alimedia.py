@@ -9,14 +9,14 @@ import numpy as np
 
 
 class VideoDataSet(data.Dataset):
-    def __init__(self, opt, subset="train"):
+    def __init__(self, opt, mode="train"):
         self.temporal_scale = opt["temporal_scale"]  # 100
         self.temporal_gap = 1. / self.temporal_scale
-        self.subset = subset
-        self.mode = opt["mode"]
+        self.mode = mode
         self.feature_path = opt["feature_path"]
-        self.bmn_file = opt[subset+"_bmn"]
-        self.info_file = opt[subset+"_info"]
+        # the bmn files are not used when mode = "test" or "submit".
+        self.bmn_file = os.path.join(opt["data_folder"], mode+"_bmn.txt")
+        self.info_file = os.path.join(opt["data_folder"], mode+"_info.txt")
         self.anchor_xmin = [self.temporal_gap * (i - 0.5) for i in range(self.temporal_scale)]
         self.anchor_xmax = [self.temporal_gap * (i + 0.5) for i in range(self.temporal_scale)]
 
@@ -29,8 +29,8 @@ class VideoDataSet(data.Dataset):
             json_str = item.strip()
             data = json.loads(json_str)
             self.video_data.append(data)
-        logger.info("In subset {}, length of video data: {}".format(self.subset, len(self.video_data)))
-        if self.subset in ["train", "valid"]:
+        logger.info("In mode {}, length of video data: {}".format(self.mode, len(self.video_data)))
+        if self.mode in ["train", "valid"]:
             input = open(self.bmn_file, "r").readlines()
             self.video_bmn = {}
             for i, item in enumerate(input):
@@ -44,9 +44,8 @@ class VideoDataSet(data.Dataset):
                     e = 3 * (l+1)
                     label, start, end = video_seg[s:e]
                     self.video_bmn[video_name].append((int(label), float(start), float(end)))
-            logger.info("In subset {}, length of video info: {}".format(self.subset, len(self.video_bmn)))
+            logger.info("In mode {}, length of video info: {}".format(self.mode, len(self.video_bmn)))
             new_video_data = []
-            #new_video_data = self.m.list()
             count = 0
             for i in range(len(self.video_data)):
                 data = self.video_data[i]
@@ -55,17 +54,16 @@ class VideoDataSet(data.Dataset):
                     count += 1
                     continue
                 new_video_data.append(data)
-            logger.info("In subset {}, there are {} videos which lack video_bmn.".format(self.subset, count))
+            logger.info("In mode {}, there are {} videos which lack video_bmn.".format(self.mode, count))
             self.video_data = new_video_data
         else:
             self.video_bmn = None
 
     def __getitem__(self, index):
         video_data = self._load_file(index)
-        if self.mode == "train":
-            score_start, score_end, confidence_score = \
-                self._get_train_label(index, self.anchor_xmin, self.anchor_xmax)
-            return video_data, confidence_score, score_start, score_end
+        if self.mode in ["train", "valid"]:
+            start, end, confidence = self._get_train_label(index, self.anchor_xmin, self.anchor_xmax)
+            return video_data, confidence, start, end
         else:
             return index, video_data
 
@@ -80,7 +78,7 @@ class VideoDataSet(data.Dataset):
         video_feature = torch.Tensor(video_feature)
         # N x C -> C x N
         video_feature = torch.transpose(video_feature, 0, 1).unsqueeze(0)
-        #B, C, N = video_feature.shape
+        # B, C, N = video_feature.shape
         video_feature = torch.nn.functional.interpolate(video_feature, size=self.temporal_scale, mode="linear",
                                                         align_corners=False)
         video_feature = video_feature.squeeze(0)
@@ -158,7 +156,7 @@ if __name__ == '__main__':
 
     opt = opts.parse_opt()
     opt = vars(opt)
-    train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="train"),
+    train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, mode="train"),
                                                batch_size=opt["batch_size"], shuffle=True,
                                                num_workers=0, pin_memory=True, drop_last=False)
     for i, (video_data, confidence, score_start, score_end) in enumerate(train_loader):
