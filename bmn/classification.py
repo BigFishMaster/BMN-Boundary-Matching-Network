@@ -75,7 +75,7 @@ def get_classify(model, opt, video_data, video_proposal, index_queue, result_que
             start_idx = int(start / corrected_second * N)
             end_idx = int(end / corrected_second * N)
             prop_feature = feature[start_idx:end_idx].contiguous()
-            top1_score, top1_label = model.predict(prop_feature)
+            top1_score, top1_label = model.predict(prop_feature, opt["classifier_type"])
             if label2name is not None:
                 top1_label = label2name[top1_label]
             dic0["label"] = top1_label

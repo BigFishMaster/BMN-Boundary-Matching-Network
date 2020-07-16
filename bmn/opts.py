@@ -29,6 +29,7 @@ def parse_opt():
     parser.add_argument('--submit_label_file', type=str, default='labels.txt')
     parser.add_argument('--test_checkpoint', type=str, default='best_checkpoint.pth.tar')
     parser.add_argument('--test_classifier', type=str, default='slowfast_checkpoint.pth.tar.linear')
+    parser.add_argument('--classifier_type', type=str, default='avg_softmax')
     parser.add_argument('--num_proposals', type=int, default=100)
     parser.add_argument('--post_process_thread', type=int, default=8)
     parser.add_argument('--soft_nms_alpha', type=float, default=0.4)
