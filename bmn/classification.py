@@ -28,11 +28,15 @@ class LinearModel:
 
     def _accum(self, feat):
         N = feat.shape[0]
-        for i in range(N):
-            s = i
+        L = N // self.accum_feature
+        new_feat = []
+        for i in range(L+1):
+            s = i * self.accum_feature
             e = min(s+self.accum_feature, N)
-            feat[i] = feat[s:e].mean(0)
-        return feat
+            if e > s:
+                new_feat.append(feat[s:e].mean(0))
+        result = torch.as_tensor(np.stack(new_feat))
+        return result
 
     def predict(self, feat, mode="avg_feature"):
         """
