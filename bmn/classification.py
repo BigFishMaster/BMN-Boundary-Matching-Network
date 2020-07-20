@@ -18,6 +18,22 @@ class LinearModel:
         self.weight = weight.t()
         self.bias = bias
 
+        if opt["test_accum_feature"] is not None:
+            self.accum_feature = opt["test_accum_feature"]
+        else:
+            self.accum_feature = None
+
+        logger.info("In Linear model, weight: {}, bias: {}, accum: {}".format(
+            self.weight.shape, self.bias.shape, self.accum_feature))
+
+    def _accum(self, feat):
+        N = feat.shape[0]
+        for i in range(N):
+            s = i
+            e = min(s+self.accum_feature, N)
+            feat[i] = feat[s:e].mean(0)
+        return feat
+
     def predict(self, feat, mode="avg_feature"):
         """
         Args:
@@ -32,6 +48,8 @@ class LinearModel:
             result = feat.matmul(self.weight) + self.bias
             result = F.softmax(result, dim=0)
         elif mode == "avg_softmax":
+            if self.accum_feature is not None:
+                feat = self._accum(feat)
             result = feat.matmul(self.weight) + self.bias
             result = F.softmax(result, dim=1)
             result = result.mean(0)
