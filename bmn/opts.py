@@ -20,6 +20,7 @@ def parse_opt():
     # Overall Dataset settings
     parser.add_argument('--hidden_size', type=str, default='256,128,512')
     parser.add_argument('--temporal_scale', type=int, default=100)
+    parser.add_argument('--temporal_factor', type=float, default=1.5)
     parser.add_argument('--feature_path', type=str, default=None)
     parser.add_argument('--num_sample', type=int, default=32)
     parser.add_argument('--num_sample_perbin', type=int, default=3)
