@@ -3,7 +3,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from bmn.models import BMN
-from bmn.Alimedia import VideoDataSet
+from bmn.Alimedia_v2 import VideoDataSet
 from bmn.loss_function import bmn_loss_func, get_mask
 from bmn.utils.logging import logger
 

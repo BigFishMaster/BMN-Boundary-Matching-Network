@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from bmn.models import BMN
 from bmn.utils.logging import logger
-from bmn.Alimedia import VideoDataSet
+from bmn.Alimedia_v2 import VideoDataSet
 from torch.utils.data import DataLoader
 
 
